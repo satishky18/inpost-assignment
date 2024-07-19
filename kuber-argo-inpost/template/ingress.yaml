@@ -1,32 +1,30 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "my-chart.fullname" . }}
-  labels:
-    app: {{ include "my-chart.name" . }}
+  name: spring-boot-api-ingress
 spec:
   rules:
-    - host: {{ .Values.profile }}.example.com
-      http:
-        paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "my-chart.fullname" . }}
-                port:
-                  number: 8080
-          - path: /logs
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "my-chart.fullname" . }}
-                port:
-                  number: 8081
-          - path: /soap
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "my-chart.fullname" . }}
-                port:
-                  number: 8082
+  - host: {{ .Values.env }}.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name:  {{ printf "%s-%s" .Values.app-name .Values.env }}
+            port:
+              number: 8080
+      - path: /logs
+        pathType: Prefix
+        backend:
+          service:
+            name:  {{ printf "%s-%s" .Values.app-name .Values.env }}
+            port:
+              number: 8081
+      - path: /soap
+        pathType: Prefix
+        backend:
+          service:
+            name:  {{ printf "%s-%s" .Values.app-name .Values.env }}
+            port:
+              number: 8082

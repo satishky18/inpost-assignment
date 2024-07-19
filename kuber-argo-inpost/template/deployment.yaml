@@ -1,71 +1,72 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "my-chart.fullname" . }}
+  name: {{ printf "%s-%s" .Values.app-name .Values.env }}
+  namespace: {{ .Values.namespace }}
   labels:
-    app: {{ include "my-chart.name" . }}
-    chart: {{ include "my-chart.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    app: {{ .Values.app-name }}
 spec:
-  replicas: {{ .Values.replicaCount }}
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+{{- if eq .Values.env "prod" }}
+  replicas: 5
+{{- else }}
+  replicas: 3
+{{- end }}
   selector:
     matchLabels:
-      app: {{ include "my-chart.name" . }}
-      release: {{ .Release.Name }}
+      app: {{ printf "%s-%s" .Values.app-name .Values.env }}
+      env: {{ .Values.env }}
   template:
     metadata:
       labels:
-        app: {{ include "my-chart.name" . }}
-        release: {{ .Release.Name }}
+        app: {{ printf "%s-%s" .Values.app-name .Values.env }}
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        configChecksum: "sha256:{{ .Values.configChecksum }}"
     spec:
       containers:
-        - name: {{ include "my-chart.name" . }}
-          image: "busybox:stable"
-          ports:
-            - containerPort: 8080
-            - containerPort: 8081
-            - containerPort: 8082
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-          args:
-            - "--spring.profiles.active={{ .Values.profile }}"
-          livenessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            tcpSocket:
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          resources:
-            limits:
-              cpu: {{ .Values.resources.limits.cpu }}
-              memory: {{ .Values.resources.limits.memory }}
-            requests:
-              cpu: {{ .Values.resources.requests.cpu }}
-              memory: {{ .Values.resources.requests.memory }}
-          volumeMounts:
-            - name: config-volume
-              mountPath: /app/config.json
-              subPath: config.json
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "wget http://localhost:8080/service/shutdown"]
-      volumes:
+      - name: {{ printf "%s-%s" .Values.app-name .Values.env }}
+        image: busybox:stable
+        args: ["--spring.profiles.active=env: {{ .Values.env }}"]  # Change to "prd" for production
+        ports:
+        - containerPort: 8080
+        - containerPort: 8081
+        - containerPort: 8082
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        volumeMounts:
         - name: config-volume
-          configMap:
-            name: {{ include "my-chart.fullname" . }}-config
+          mountPath: /app/config.json
+          subPath: config.json
+        resources:
+          requests:
+            memory: {{ .Values.resources.limits.memory }}
+            cpu: {{ .Values.resources.limits.cpu }}
+          limits:
+            memory: {{ .Values.resources.requests.memory }}
+            cpu: {{ .Values.resources.requests.cpu }}
+        lifecycle:
+          preStop:
+            exec:
+              command: ["wget", "http://localhost:8080/service/shutdown"]
+      volumes:
+      - name: config-volume
+        configMap:
+          name: sample-config
+      terminationGracePeriodSeconds: 30
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1

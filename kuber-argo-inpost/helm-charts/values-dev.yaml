@@ -1,12 +1,14 @@
-profile: prod
+env: dev
+namespace: inpost
+app-name: spring-boot-api
 
 resources:
   limits:
-    cpu: 1000m
-    memory: 1024Mi
-  requests:
     cpu: 500m
     memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
 
 config:
   json: |

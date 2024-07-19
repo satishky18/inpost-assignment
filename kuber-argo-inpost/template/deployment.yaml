@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "my-chart.fullname" . }}
+  labels:
+    app: {{ include "my-chart.name" . }}
+    chart: {{ include "my-chart.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: {{ include "my-chart.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "my-chart.name" . }}
+        release: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: {{ include "my-chart.name" . }}
+          image: "busybox:stable"
+          ports:
+            - containerPort: 8080
+            - containerPort: 8081
+            - containerPort: 8082
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          args:
+            - "--spring.profiles.active={{ .Values.profile }}"
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config.json
+              subPath: config.json
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "wget http://localhost:8080/service/shutdown"]
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "my-chart.fullname" . }}-config

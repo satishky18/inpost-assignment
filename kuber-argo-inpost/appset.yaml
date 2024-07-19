@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: my-applicationset
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: dev-global-cluster-0
+            namespace: dev
+            profile: dev
+          - cluster: prd-global-cluster-5
+            namespace: prd
+            profile: prd
+  template:
+    metadata:
+      name: '{{cluster}}-app'
+    spec:
+      project: '{{cluster}}-project'
+      source:
+        repoURL: '<URL_TO_HELM_CHART_REPO>'
+        targetRevision: HEAD
+        chart: my-chart
+        helm:
+          valuesFiles:
+            - values-{{profile}}.yaml
+      destination:
+        server: 'https://{{cluster}}.example.com'
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

@@ -19,6 +19,7 @@ spec:
     metadata:
       labels:
         app: {{ printf "%s-%s" .Values.app-name .Values.env }}
+        env: {{ .Values.env }}
       annotations:
         configChecksum: "sha256:{{ .Values.configChecksum }}"
     spec:
